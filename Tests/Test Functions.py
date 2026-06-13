@@ -1,5 +1,5 @@
 import random
-
+import main
 
 def run_dissection_tree_test(num_objects=10000, num_dimensions=10, tree_depth=4):
     """
@@ -20,7 +20,7 @@ def run_dissection_tree_test(num_objects=10000, num_dimensions=10, tree_depth=4)
     axis_tree_list = [random.randint(0, num_dimensions - 1) for _ in range(num_internal_nodes)]
 
     # 3. Generate the tree according to our spatial partition logic
-    root_node = build_spatial_dissection_tree(generated_objects, axis_tree_list)
+    root_node = main.build_spatial_dissection_tree(generated_objects, axis_tree_list)
 
     # Helper functions to gather structural diagnostics for the report
     def get_max_depth(node):
