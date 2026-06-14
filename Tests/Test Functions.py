@@ -1,6 +1,7 @@
 import random
 import main
 
+
 def run_dissection_tree_test(num_objects=10000, num_dimensions=10, tree_depth=4):
     """
     Generates high-dimensional data, builds a spatial dissection tree with
@@ -62,3 +63,33 @@ def run_dissection_tree_test(num_objects=10000, num_dimensions=10, tree_depth=4)
             text_output += f" - {key}: {val}\n"
 
     return root_node, text_output
+
+
+def test_tree_point_path():
+    # Create a test setup: 10,000 objects, 3 dimensions, depth of 3
+    import random
+    dataset = [[random.random() for _ in range(3)] for _ in range(10000)]
+    axis_splits = [0, 1, 2, 0, 1, 2, 0] # Layout for a complete tree layer
+
+    # Build the tree using our previous architecture
+    spatial_tree = main.build_spatial_dissection_tree(dataset, axis_splits)
+
+    # Define an arbitrary evaluation point in our 3D space
+    test_point = [0.15, 0.82, 0.44]
+
+    # Trace the path counters
+    history = main.trace_point_path(spatial_tree, test_point)
+
+    print("--- Traversal History (Root to Leaf) ---")
+    print("Format: (Objects on Point's Side, Objects on Opposite Side)\n")
+    for level, (success, unsuccess) in enumerate(history):
+        print(f"Level {level}: Success Side = {success:<5} | Unsuccess Side = {unsuccess:<5}")
+
+    print("Calculating beta-binomial distribution")
+
+
+root_node, text = run_dissection_tree_test()
+print(root_node.sub_leaf_sum)
+print(text)
+
+test_tree_point_path()

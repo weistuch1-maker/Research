@@ -1,3 +1,6 @@
+import random
+
+
 class DissectionNode:
     def __init__(self, axis=None, p_left=0.5, p_right=0.5, value=None, left=None, right=None, parent=None):
         self.axis = axis
@@ -129,3 +132,79 @@ def build_spatial_dissection_tree(objects, axis_tree_list, bounds=None, node_ind
         left=left_child,
         right=right_child
     )
+
+
+def trace_point_path(root, point, bounds=None):
+    """
+    Traverses the dissection tree to find the leaf containing the point.
+    Returns a list of (success_count, failure_count) tuples for each split level.
+
+    :param root: The root DissectionNode of the tree
+    :param point: List or tuple of floats representing the N-dimensional point
+    :param bounds: Optional initial spatial boundaries. Defaults to [0.0, 1.0] per dimension.
+    """
+    if bounds is None:
+        # Default space configuration to match the tree builder
+        bounds = [(0.0, 1.0) for _ in range(len(point))]
+
+    # Create a local mutable copy of the boundaries to narrow down during traversal
+    current_bounds = list(bounds)
+    path_counts = []
+    current_node = root
+
+    # Loop down until we hit a terminated leaf node
+    while not current_node.is_leaf:
+        axis = current_node.axis
+        axis_min, axis_max = current_bounds[axis]
+        split_point = (axis_min + axis_max) / 2.0
+
+        # Determine which branch contains our target point
+        if point[axis] <= split_point:
+            success_child = current_node.left
+            failure_child = current_node.right
+            # Update bounds for subsequent lower levels
+            current_bounds[axis] = (axis_min, split_point)
+        else:
+            success_child = current_node.right
+            failure_child = current_node.left
+            # Update bounds for subsequent lower levels
+            current_bounds[axis] = (split_point, axis_max)
+
+        # Extract the aggregated object counts from both sub-trees
+        success_count = success_child.sub_leaf_sum if success_child else 0
+        failure_count = failure_child.sub_leaf_sum if failure_child else 0
+
+        # Append the pair to our history log
+        path_counts.append((success_count, failure_count))
+
+        # Move down to the next node in the path
+        current_node = success_child
+
+    return path_counts
+
+
+def weighted_density(tree_root_list, weights, point):
+    """
+    Using pre-calculated trees, determine the weighted density in a single point
+    :param tree_root_list: DissectionNode objects representing roots of trees
+    :param weights: Ordered weight of each tree in density calculation (adds to 1)
+    :param point: N-dimensional point
+    """
+    if len(tree_root_list) != len(weights):
+        raise ValueError("Tree list length mismatches with weights list")
+
+    weighted_prob = 0
+    # Loop through all trees, adding weighted probabilities
+    for i in range(len(tree_root_list)):
+        tree_prob = 1
+        beta_dist_variables = trace_point_path(tree_root_list[i], point)
+
+        for success, failure in beta_dist_variables:
+            alpha = success + 1
+            beta = success + 1
+            p = random.betavariate(alpha=alpha, beta=beta)
+            tree_prob *= p
+
+        weighted_prob += tree_prob * weights[i]
+
+    return weighted_prob
