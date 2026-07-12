@@ -1,4 +1,6 @@
 import random
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 class DissectionNode:
@@ -208,3 +210,112 @@ def weighted_density(tree_root_list, weights, point):
         weighted_prob += tree_prob * weights[i]
 
     return weighted_prob
+
+
+def sample_point_from_tree(root, a0, b0, num_dimensions, bounds=None):
+    """
+    Generates an N-dimensional point by stochastically traversing the tree
+    using Beta-distributed branch probabilities, then sampling uniformly within the leaf bounds.
+
+    :param root: The root DissectionNode of the tree
+    :param a0: Beta distribution prior for the left branch (must be > 0)
+    :param b0: Beta distribution prior for the right branch (must be > 0)
+    :param num_dimensions: Total number of dimensions (N) of the space
+    :param bounds: Optional initial spatial boundaries. Defaults to [0.0, 1.0] per dimension.
+    """
+    if bounds is None:
+        # Initialize the global hyper-cube bounds if not provided
+        current_bounds = [(0.0, 1.0) for _ in range(num_dimensions)]
+    else:
+        current_bounds = list(bounds)
+
+    current_node = root
+
+    # 1. Stochastically descend the tree until hitting a leaf node
+    while not current_node.is_leaf:
+        axis = current_node.axis
+        axis_min, axis_max = current_bounds[axis]
+        split_point = (axis_min + axis_max) / 2.0
+
+        # Gather the object counts from the left and right subtrees
+        left_count = current_node.left.sub_leaf_sum if current_node.left else 0
+        right_count = current_node.right.sub_leaf_sum if current_node.right else 0
+
+        # 2. Setup Beta distribution parameters using counts + user-defined priors
+        alpha = left_count + a0
+        beta = right_count + b0
+
+        # Sample the probability of choosing the left branch
+        p_left = random.betavariate(alpha=alpha, beta=beta)
+
+        # 3. Choose a child branch at random based on p_left
+        if random.random() < p_left:
+            # Step Left (Success branch for this choice)
+            current_bounds[axis] = (axis_min, split_point)
+            current_node = current_node.left
+        else:
+            # Step Right (Failure branch for this choice)
+            current_bounds[axis] = (split_point, axis_max)
+            current_node = current_node.right
+
+    # 4. Leaf reached: Uniformly sample a point within the final N-dimensional sub-cube bounds
+    generated_point = [
+        random.uniform(dim_min, dim_max)
+        for dim_min, dim_max in current_bounds
+    ]
+
+    return generated_point
+
+
+def one_dim_tree(object_amount, result_amount, a0, b0):
+
+    n_vec = [[random.random()] for _ in range(object_amount)]
+    root = build_spatial_dissection_tree(n_vec, [0])
+
+    p_list = []
+    for i in range(result_amount):
+        new_p = sample_point_from_tree(root, a0, b0, num_dimensions=1)
+        p_list.append(new_p)
+
+    bins_amount = 20
+    counts, bins = np.histogram(p_list, bins=bins_amount, range=(0, 1))
+    plt.hist(bins[:-1], bins, weights=counts)
+    plt.show()
+
+
+def two_dim_tree(object_amount, result_amount, a0, b0):
+
+    n_vec = [[random.random(), random.random()] for _ in range(object_amount)]
+    root = build_spatial_dissection_tree(n_vec, [0, 1, 1])
+
+    x_vals = []
+    y_vals = []
+    for i in range(result_amount):
+        new_p = sample_point_from_tree(root, a0, b0, num_dimensions=2)
+        x_vals.append(new_p[0])
+        y_vals.append(new_p[1])
+
+    n_vec_x_vals = []
+    n_vec_y_vals = []
+    for i in n_vec:
+        n_vec_x_vals.append(i[0])
+        n_vec_y_vals.append(i[1])
+
+    plt.scatter(x_vals, y_vals)
+    plt.scatter(n_vec_x_vals, n_vec_y_vals)
+    plt.show()
+
+
+def main():
+
+    object_amount = 10
+    result_amount = 2000
+
+    a0, b0 = 1, 1
+
+    two_dim_tree(object_amount, result_amount, a0, b0)
+    # one_dim_tree(10, result_amount, a0, b0)
+
+
+main()
+
