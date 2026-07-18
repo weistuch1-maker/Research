@@ -308,13 +308,13 @@ def two_dim_tree(object_amount, result_amount, a0, b0):
 
 def main():
 
-    object_amount = 10
+    object_amount = 1
     result_amount = 2000
 
     a0, b0 = 1, 1
 
     two_dim_tree(object_amount, result_amount, a0, b0)
-    # one_dim_tree(10, result_amount, a0, b0)
+    #one_dim_tree(10, result_amount, a0, b0)
 
 
 main()
